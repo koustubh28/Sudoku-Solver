@@ -1,0 +1,118 @@
+# Importing necessary libraries
+import tkinter as tk
+from tkinter import messagebox
+
+# Creating the Sudoku GUI class
+class SudokuGUI:
+    """ method to initialize - Loops through Rows and Columns and checks for any empty cells"""
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Sudoku Solver")
+
+        self.entries = [[None for _ in range(9)] for _ in range(9)]
+
+
+        for i in range(9):
+            for j in range(9):
+                entry = tk.Entry(master, width=2, font=('Arial', 18), justify='center')
+                entry.grid(row=i, column=j, padx=2, pady=2)
+                self.entries[i][j] = entry
+
+        solve_btn = tk.Button(master, text="Solve", command=self.solve)
+        solve_btn.grid(row=9, column=0, columnspan=9, pady=10)
+
+    def read_board(self):
+        board = []
+        for i in range(9):
+            row = []
+            for j in range(9):
+                val = self.entries[i][j].get()
+                if val in ('', '*'):
+                    row.append(0)
+                elif val.isdigit() and 1 <= int(val) <= 9:
+                    row.append(int(val))
+                else:
+                    messagebox.showerror("Invalid Input", f"Invalid entry at row {i+1}, col {j+1}")
+                    return None
+            board.append(row)
+        return board
+    
+    # method to fill the board with the solved values
+    def fill_board(self, board):
+        for i in range(9):
+            for j in range(9):
+                self.entries[i][j].delete(0, tk.END)
+                self.entries[i][j].insert(0, str(board[i][j]))
+
+    def solve(self):
+        board = self.read_board()
+        if board is None:
+            return
+
+        gameboard = Board(board)
+        if gameboard.solver():
+            self.fill_board(gameboard.board)
+        else:
+            messagebox.showinfo("Result", "No solution found.")
+
+# ------------------ Sudoku Logic Here ------------------ #
+
+class Board:
+    def __init__(self, board):
+        self.board = board
+
+    # method to find an empty cell in the Sudoku board
+    def find_empty_cell(self):
+        for row, contents in enumerate(self.board):
+            try:
+                col = contents.index(0)
+                return row, col
+            except ValueError:
+                pass
+        return None
+
+    # method to check if a number can be placed in a specific row
+    def valid_in_row(self, row, num):
+        return num not in self.board[row]
+
+    # methods to check if a number can be placed in a specific column
+    def valid_in_col(self, col, num):
+        return all(self.board[row][col] != num for row in range(9))
+
+    # methods to check if a number can be placed in a specific square
+    def valid_in_square(self, row, col, num):
+        row_start = (row // 3) * 3
+        col_start = (col // 3) * 3
+        for r in range(row_start, row_start + 3):
+            for c in range(col_start, col_start + 3):
+                if self.board[r][c] == num:
+                    return False
+        return True
+
+    def is_valid(self, empty, num):
+        row, col = empty
+        return all([
+            self.valid_in_row(row, num),
+            self.valid_in_col(col, num),
+            self.valid_in_square(row, col, num)
+        ])
+
+    # method to solve the Sudoku puzzle using backtracking
+    def solver(self):
+        if (empty := self.find_empty_cell()) is None:
+            return True
+        row, col = empty
+        for guess in range(1, 10):
+            if self.is_valid((row, col), guess):
+                self.board[row][col] = guess
+                if self.solver():
+                    return True
+                self.board[row][col] = 0
+        return False
+
+# ------------------ Launch GUI ------------------ #
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SudokuGUI(root)
+    root.mainloop()
